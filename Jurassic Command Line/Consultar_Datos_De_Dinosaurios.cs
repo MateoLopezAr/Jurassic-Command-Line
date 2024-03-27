@@ -62,7 +62,7 @@ namespace Jurassic_Command_Line
 
                     comboBox.Sorted = true;
 
-                    File.Delete(_filePath);
+                    //File.Delete(_filePath);
                 }
                 catch (Exception ex)
                 {
@@ -90,7 +90,7 @@ namespace Jurassic_Command_Line
 
                     comboBox.Sorted = true;
 
-                    File.Delete(_filePath);
+                    //File.Delete(_filePath);
                 }
                 catch (Exception ex)
                 {

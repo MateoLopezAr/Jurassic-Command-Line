@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Windows.Forms;
 using WMPLib;
@@ -13,8 +14,8 @@ namespace Jurassic_Command_Line
     {
         public static WindowsMediaPlayer Wmp = new WindowsMediaPlayer();
 
-        private string _imageLocation,
-            _imageDestination,
+        private string
+            _imageLocation,
             _soundLocation,
             _soundDestination,
             _especie,
@@ -29,7 +30,6 @@ namespace Jurassic_Command_Line
         private string _filePath = Path.GetTempFileName();
         private bool isAppearing = false;
         private Timer _timer = new Timer();
-        private bool Checking_AlreadyExists = false;
         private WindowsMediaPlayer _objeto = Seleccióm.Sonido;
 
         public AddDino()
@@ -82,6 +82,10 @@ namespace Jurassic_Command_Line
 
         private void Player_PlayStateChange(int newstate)
         {
+            if ((WMPLib.WMPPlayState)newstate == WMPLib.WMPPlayState.wmppsMediaEnded)
+            {
+                _timer.Start();
+            }
         }
 
         private void Cerrarform(object sender, EventArgs e)
@@ -101,7 +105,7 @@ namespace Jurassic_Command_Line
 
                 try
                 {
-                    File.Move(_soundLocation, _soundDestination);
+                    File.Copy(_soundLocation, _soundDestination);
                 }
                 catch (Exception exception)
                 {
@@ -113,24 +117,13 @@ namespace Jurassic_Command_Line
         private void btn_selec_img_Click(object sender, EventArgs e)
         {
             OpenFileDialog archivo = new OpenFileDialog();
-            string texto = Microsoft.VisualBasic.Interaction.InputBox(
-                "Especie:",
-                "System Admin",
-                "");
             archivo.Filter = "Archivos de imagen (*.jpeg) | *.jpeg";
+
             if (archivo.ShowDialog() == DialogResult.OK)
             {
                 _imageLocation = archivo.FileName;
-                _imageDestination = Path.Combine((@"C:\Users\Public\Documents\Jurassic Command Line\Images"), texto + ".jpeg");
-                try
-                {
-                    File.Move(_imageLocation, _imageDestination);
-                    pictureBox1.Image = Image.FromFile(_imageDestination);
-                }
-                catch (Exception exception)
-                {
-                    MessageBox.Show($"Error: {exception}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                pictureBox1.Image = Image.FromFile(_imageLocation);
+
             }
         }
 
@@ -141,10 +134,7 @@ namespace Jurassic_Command_Line
 
         private void btn_guardar_tdo_Click(object sender, EventArgs e)
         {
-            if (CMBB_ISLAND.SelectedItem != null && TXTespecie.Text != null && TXTflia.Text != null
-                && TXTera.Text != null && Cantidad_Num.Text != null && Sec_Num.Text != null
-                && Alto_Num.Text != null && Largo_Num.Text != null && CMBB_Dieta.SelectedItem != null
-                && richTextBox1.Text != null)
+            if (Completo() == true)
             {
                 _isla = CMBB_ISLAND.SelectedItem.ToString();
                 _especie = TXTespecie.Text.Trim();
@@ -157,35 +147,17 @@ namespace Jurassic_Command_Line
                 _dieta = CMBB_Dieta.SelectedItem.ToString();
                 _infoAdicional = richTextBox1.Text;
 
-                Checking_Already_Exists();
+                //Checking_Already_Exists();
 
-                if (Checking_AlreadyExists == true)
+                if (Checking_Already_Exists() == true)
                 {
-                    Random rnd = new Random();
-                    int age = rnd.Next(60, 150);
-
-                    File.WriteAllText(@"C:\Users\Public\Documents\Jurassic Command Line\" + _especie + ".txt",
-                        _especie.ToUpper() + ":\r\n\r\nDieta: " + _dieta + "\r\nEra: " + _era + "\r\nFamilia: " + _familia +
-                        "\r\nAlto: " + _alto + " m\r\nLargo: " + _largo + " m\r\nEsperanza de vida: " + age +
-                        " Años\r\nNivel de seguridad: " + _seguridad + "\r\nPoblacíon actual: ¿?\r\nPoblación incial: " +
-                        _cantidad + "\r\n\r\n " + _infoAdicional);
+                   AggData();
+                    MoveFiles();
 
                     Seleccióm seleccióm = new Seleccióm();
                     seleccióm.Show();
                     this.Hide();
-
-                    try
-                    {
-                        System.IO.File.AppendAllText(
-                            @"C:\Users\Public\Documents\Jurassic Command Line\" + _isla + "_Dinosaurs.jcl",
-                            System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("\n" + _especie)));
-                        MessageBox.Show("Archivo guardado correctamente!", "System Admin", MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
-                    }
-                    catch (Exception exception)
-                    {
-                        MessageBox.Show($"Error: {exception}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                   
                 }
             }
             else
@@ -199,7 +171,7 @@ namespace Jurassic_Command_Line
             label12.Visible = true;
         }
 
-        public void Checking_Already_Exists()
+        public bool Checking_Already_Exists()
         {
             _especie = TXTespecie.Text.Trim();
 
@@ -207,12 +179,69 @@ namespace Jurassic_Command_Line
             {
                 MessageBox.Show("Error: El archivo '" + _especie + "', ya existe en la base de datos", "System Admin",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Checking_AlreadyExists = false;
+                return false;
             }
             else
             {
-                Checking_AlreadyExists = true;
+               return true;
             }
+        }
+
+        private bool Completo()
+        {
+            if (CMBB_ISLAND.SelectedItem != null && TXTespecie.Text != null && TXTflia.Text != null
+                && TXTera.Text != null && Cantidad_Num.Text != null && Sec_Num.Text != null
+                && Alto_Num.Text != null && Largo_Num.Text != null && CMBB_Dieta.SelectedItem != null
+                && richTextBox1.Text != null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private void AggData()
+        {
+            Random rnd = new Random();
+            int age = rnd.Next(60, 150);
+
+            File.WriteAllText(@"C:\Users\Public\Documents\Jurassic Command Line\" + _especie + ".txt",
+                _especie.ToUpper() + ":\r\n\r\nDieta: " + _dieta + "\r\nEra: " + _era + "\r\nFamilia: " + _familia +
+                "\r\nAlto: " + _alto + " m\r\nLargo: " + _largo + " m\r\nEsperanza de vida: " + age +
+                " Años\r\nNivel de seguridad: " + _seguridad + "\r\nPoblacíon actual: ¿?\r\nPoblación incial: " +
+                _cantidad + "\r\n\r\n " + _infoAdicional);
+        }
+
+        private void MoveFiles()
+        {
+            String _imageDestination = Path.Combine((@"C:\Users\Public\Documents\Jurassic Command Line\Images"), _especie + ".jpeg");
+
+            try
+            {
+                System.IO.File.AppendAllText(
+                    @"C:\Users\Public\Documents\Jurassic Command Line\" + _isla + "_Dinosaurs.jcl", System.Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("\n" + _especie)));
+                MessageBox.Show(System.Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("\n" + _especie)));
+
+                MessageBox.Show("Archivo guardado correctamente!", "System Admin", MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show($"Error: {exception}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            try
+            {
+                File.Copy(_imageLocation, _imageDestination);
+                pictureBox1.Image = Image.FromFile(_imageDestination);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show($"Error: {exception}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
         }
     }
 }
